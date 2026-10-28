@@ -6,6 +6,8 @@ public struct StreamStep: Sendable {
     public let label: SegmentGate.Label
     /// 길이 minSegmentFrames 이상으로 끝난 단어 구간(스무딩된 원시 좌표). 없으면 nil.
     public let segment: [Frame]?
+    /// 이 프레임 처리 후 게이트가 대기 상태인가 (Python realtime.py 의 gate.state == "idle").
+    public let isIdle: Bool
 }
 
 /// kslx/realtime.py auto 모드의 프레임 루프:
@@ -30,7 +32,8 @@ public final class SignStream {
         if let n { prevNorm = n }
         let (label, buf) = gate.step(sm, energy: energy)
         let segment = (label == .finished && (buf?.count ?? 0) >= Self.minSegmentFrames) ? buf : nil
-        return StreamStep(smoothed: sm, normalized: n, energy: energy, label: label, segment: segment)
+        return StreamStep(smoothed: sm, normalized: n, energy: energy, label: label,
+                          segment: segment, isIdle: !gate.isRecording)
     }
 
     /// 전체 초기화(R 키와 같음). 어깨너비 보정값은 유지한다.
