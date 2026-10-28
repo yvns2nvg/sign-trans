@@ -25,9 +25,9 @@ public final class SignClassifier: SignClassifying {
     }
 
     public static func bundled() throws -> SignClassifier {
-        guard let m = Bundle.module.url(forResource: "sign_c1200", withExtension: "onnx", subdirectory: "Resources")
+        guard let m = Bundle.module.url(forResource: "sign_c1200", withExtension: "onnx")
         else { throw ClassifierError.missingResource("sign_c1200.onnx") }
-        guard let l = Bundle.module.url(forResource: "labels", withExtension: "json", subdirectory: "Resources")
+        guard let l = Bundle.module.url(forResource: "labels", withExtension: "json")
         else { throw ClassifierError.missingResource("labels.json") }
         return try SignClassifier(modelURL: m, labelsURL: l)
     }

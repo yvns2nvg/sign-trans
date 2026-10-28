@@ -1,0 +1,64 @@
+name: SignTrans
+options:
+  bundleIdPrefix: com.iyunseung
+  deploymentTarget:
+    iOS: "26.0"
+packages:
+  SignCore:
+    path: SignCore
+  MediaPipe:
+    path: Vendor/MediaPipe   # mediapipe v1.1.1 바이너리 로컬 래퍼 (Vendor/MediaPipe/Package.swift 참고)
+targets:
+  SignTrans:
+    type: application
+    platform: iOS
+    sources:
+      - SignTrans
+    dependencies:
+      - package: SignCore
+        product: SignCore
+      - package: SignCore
+        product: SignInference
+      - package: MediaPipe
+        product: MediaPipeTasksVision
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.iyunseung.signtrans
+        SWIFT_VERSION: "5.0"
+        TARGETED_DEVICE_FAMILY: "1"
+        GENERATE_INFOPLIST_FILE: YES
+        INFOPLIST_KEY_CFBundleDisplayName: 수어대화
+        INFOPLIST_KEY_UILaunchScreen_Generation: YES
+        INFOPLIST_KEY_UISupportedInterfaceOrientations: UIInterfaceOrientationPortrait
+        INFOPLIST_KEY_NSCameraUsageDescription: 상대방의 수어를 번역하려면 카메라가 필요해요.
+        INFOPLIST_KEY_NSMicrophoneUsageDescription: 말을 자막으로 바꾸려면 마이크가 필요해요.
+        INFOPLIST_KEY_NSSpeechRecognitionUsageDescription: 말을 기기 안에서 자막으로 바꿔요.
+        INFOPLIST_KEY_NSLocalNetworkUsageDescription: 가까운 상대방의 기기를 찾고 연결해요.
+        INFOPLIST_KEY_NSBluetoothAlwaysUsageDescription: 가까운 상대방의 기기를 찾고 연결해요.
+    info:
+      path: SignTrans/Info.plist
+      properties:
+        NSBonjourServices:
+          - _sign-trans._tcp
+          - _sign-trans._udp
+  SignTransTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources:
+      - SignTransTests
+    settings:
+      base:
+        GENERATE_INFOPLIST_FILE: YES
+    dependencies:
+      - target: SignTrans
+      - package: SignCore
+        product: SignCore
+schemes:
+  SignTrans:
+    build:
+      targets:
+        SignTrans: all
+        SignTransTests: [test]
+    test:
+      targets:
+        - SignTransTests

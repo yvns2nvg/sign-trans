@@ -23,8 +23,7 @@ public struct SentenceTables: Decodable, Sendable {
     let words: [String: WordEntry]
 
     public static func bundled() throws -> SentenceTables {
-        guard let url = Bundle.module.url(forResource: "sentence_tables", withExtension: "json",
-                                          subdirectory: "Resources") else {
+        guard let url = Bundle.module.url(forResource: "sentence_tables", withExtension: "json") else {
             throw CocoaError(.fileNoSuchFile)
         }
         return try JSONDecoder().decode(SentenceTables.self, from: Data(contentsOf: url))
