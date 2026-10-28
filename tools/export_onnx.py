@@ -11,8 +11,8 @@ from kslx.data.aihub import word_label_map
 from kslx.train import build_model
 
 CKPT_PATH = KSLX_REPO / "runs/signer_out_c1200_aug.pt"
-ONNX_PATH = ROOT / "models/sign_c1200.onnx"
-LABELS_PATH = ROOT / "models/labels.json"
+ONNX_PATH = ROOT / "SignCore/Sources/SignInference/Resources/sign_c1200.onnx"
+LABELS_PATH = ROOT / "SignCore/Sources/SignInference/Resources/labels.json"
 
 
 def load_torch_model():
