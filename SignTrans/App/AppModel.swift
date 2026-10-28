@@ -1,3 +1,4 @@
+import AVFoundation
 import Foundation
 import SignCore
 
@@ -42,6 +43,8 @@ protocol HearingControlling: AnyObject {
 
     var transport: PeerTransport?
     var hearing: HearingControlling?
+    /// 청인 대화 화면의 카메라 미리보기 (HearingController 가 채움)
+    var previewSession: AVCaptureSession?
     private let defaults: UserDefaults
     private var seq = 0
 

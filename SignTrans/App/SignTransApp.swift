@@ -43,7 +43,7 @@ struct RootView: View {
                 case .discovery: DiscoveryView()
                 case .request(let peer): RequestView(peer: peer)
                 case .conversation:
-                    if model.role == .deaf { DeafConversationView() } else { HearingConversationView() }
+                    if model.role == .deaf { DeafConversationView() } else { HearingConversationView(session: model.previewSession) }
                 }
             }
         }
@@ -60,10 +60,15 @@ struct RootView: View {
 @MainActor final class HearingController: HearingControlling {
     private weak var model: AppModel?
     let speech = SpeechService()
+    let pipeline: HearingPipeline
     var camera: (() -> Void, () -> Void)?   // (start, stop)
 
     init(model: AppModel) {
         self.model = model
+        let pipeline = HearingPipeline(model: model)
+        self.pipeline = pipeline
+        model.previewSession = pipeline.camera.session
+        camera = ({ pipeline.start() }, { pipeline.stop() })
         speech.onPartial = { [weak model] t in Task { @MainActor in model?.send(.captionPartial, text: t) } }
         speech.onFinal = { [weak model] t in Task { @MainActor in model?.send(.captionFinal, text: t) } }
         speech.onStopped = { [weak model] s in Task { @MainActor in model?.send(.status, status: s) } }

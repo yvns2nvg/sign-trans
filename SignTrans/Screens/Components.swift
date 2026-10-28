@@ -1,3 +1,4 @@
+import AVFoundation
 import SwiftUI
 import SignCore
 
@@ -91,9 +92,33 @@ struct ToastView: View {
     }
 }
 
+struct CameraPreview: UIViewRepresentable {
+    let session: AVCaptureSession
+    final class PreviewView: UIView {
+        override class var layerClass: AnyClass { AVCaptureVideoPreviewLayer.self }
+        var previewLayer: AVCaptureVideoPreviewLayer { layer as! AVCaptureVideoPreviewLayer }
+    }
+    func makeUIView(context: Context) -> PreviewView {
+        let v = PreviewView()
+        v.previewLayer.session = session
+        v.previewLayer.videoGravity = .resizeAspectFill
+        if let c = v.previewLayer.connection, c.isVideoRotationAngleSupported(90) { c.videoRotationAngle = 90 }
+        return v
+    }
+    func updateUIView(_ uiView: PreviewView, context: Context) {}
+}
+
+/// 화면 3 아바타: 전면 카메라로 나 자신. 카메라가 없거나 권한이 없으면 기본 그림.
 struct FrontCameraCircle: View {
+    @State private var camera = CameraService()
+    @State private var live = false
     var body: some View {
-        Image("DefaultAvatar").resizable().scaledToFill().clipShape(Circle())
-            .background(Circle().fill(.white))
+        ZStack {
+            Image("DefaultAvatar").resizable().scaledToFill()
+            if live { CameraPreview(session: camera.session) }
+        }
+        .clipShape(Circle()).background(Circle().fill(.white))
+        .task { live = await camera.start(position: .front, wantFrames: false) == .running }
+        .onDisappear { camera.stop() }
     }
 }

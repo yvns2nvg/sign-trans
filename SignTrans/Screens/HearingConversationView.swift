@@ -1,15 +1,19 @@
+import AVFoundation
 import SwiftUI
 import SignCore
 
 struct HearingConversationView: View {
     @EnvironmentObject var model: AppModel
-    var preview: AnyView = AnyView(Color.black.opacity(0.85))
+    var session: AVCaptureSession?
 
     var body: some View {
         VStack(spacing: 12) {
             ConversationHeader(name: model.partner?.name ?? "상대방", link: model.link) { model.endConversation() }
             ZStack(alignment: .bottom) {
-                preview.clipShape(RoundedRectangle(cornerRadius: 16))
+                Group {
+                    if let session { CameraPreview(session: session) } else { Color.black.opacity(0.85) }
+                }
+                .clipShape(RoundedRectangle(cornerRadius: 16))
                 if let hint = model.hint {
                     Text(hint).font(.headline).foregroundStyle(.white).padding(12)
                         .background(Theme.primary.opacity(0.9), in: Capsule())
