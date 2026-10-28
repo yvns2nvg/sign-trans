@@ -1,0 +1,8 @@
+.DS_Store
+tools/.venv/
+__pycache__/
+SignCore/.build/
+SignCore/.swiftpm/
+DerivedData/
+*.xcuserstate
+.superpowers/
