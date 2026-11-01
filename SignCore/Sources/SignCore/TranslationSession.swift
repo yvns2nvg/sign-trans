@@ -30,6 +30,8 @@ public final class TranslationSession {
     /// 상황 어휘 모드(시연용). 설정하면 분류 상위 후보(최대 5개) 중 이 단어들만 본다:
     /// 가장 순위가 높은 허용 단어를 확률 기준 없이 확정하고, 하나도 없으면 버린다. nil 이면 일반 모드.
     public var allowedWords: Set<String>?
+    /// 상황 어휘 모드에서 볼 상위 후보 수. 낮을수록 엉뚱한 동작이 허용 단어로 잡힐 위험이 줄어든다.
+    public var allowedWordsTopK = 5
     public private(set) var lastTopK: [GlossScore] = []
 
     public var pendingWords: [String] { builder.words }
@@ -53,7 +55,7 @@ public final class TranslationSession {
                 let top = try classifier.classify(Featurizer.featurize(seg))
                 lastTopK = top
                 if let allowed = allowedWords {
-                    if let hit = top.first(where: { allowed.contains($0.gloss) }) {
+                    if let hit = top.prefix(allowedWordsTopK).first(where: { allowed.contains($0.gloss) }) {
                         builder.onWord(hit.gloss)
                         events.append(.wordAccepted(hit))
                     } else if let best = top.first {

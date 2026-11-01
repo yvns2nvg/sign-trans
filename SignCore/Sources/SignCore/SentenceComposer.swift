@@ -12,6 +12,8 @@ public enum RecognitionDefaults {
     /// 실측(2026-11-01, iPhone 후면): 잘못 확정된 구간 대부분 6~18프레임. 짧은 수어 '원하다'는 26~29프레임이라
     /// 처음 정한 30 에서 20 으로 낮췄다.
     public static let minSignFrames = 20
+    /// 상황 어휘 모드에서 볼 상위 후보 수 (실측: 5위까지 보면 1% 후보가 확정되는 경우가 있었음).
+    public static let allowedWordsTopK = 3
 }
 
 /// kslx/sentence.py compose_sentence 이식. kiwi 대신 미리 계산한 표를 쓴다.
@@ -105,6 +107,8 @@ public final class SentenceBuilder {
     public let composer: SentenceComposer
     public let sentenceEndHold: Int
     public var style: SentenceStyle
+    /// true 면 바로 앞과 같은 단어는 문장에 다시 넣지 않는다(같은 수어 반복 확정 방지). 기본값은 Python 과 같음.
+    public var collapseRepeats = false
     public private(set) var words: [String] = []
     private var idleFrames = 0
 
@@ -112,7 +116,10 @@ public final class SentenceBuilder {
         self.composer = composer; self.sentenceEndHold = sentenceEndHold; self.style = style
     }
 
-    public func onWord(_ gloss: String) { words.append(gloss); idleFrames = 0 }
+    public func onWord(_ gloss: String) {
+        if !(collapseRepeats && words.last == gloss) { words.append(gloss) }
+        idleFrames = 0
+    }
 
     /// idle 프레임마다 호출. true 면 finalize() 할 시점.
     public func tickIdle() -> Bool {

@@ -131,3 +131,35 @@ struct SentenceTimingFixture: Decodable {
     }
     #expect(accepted == 0 && rejected == clf.calls)   // 확률 95%여도 허용 단어가 아니면 버림
 }
+
+/// 상황 어휘 모드는 상위 allowedWordsTopK(앱 3) 안의 허용 단어만 확정한다.
+@Test func allowedWordsIgnoreLowRankedCandidates() throws {
+    let fx = try Fixtures.load("stream.json", as: StreamFixture.self)
+    let clf = FixedClassifier([GlossScore(gloss: "지팡이", probability: 0.27),
+                               GlossScore(gloss: "필기시험", probability: 0.03),
+                               GlossScore(gloss: "샛길", probability: 0.02),
+                               GlossScore(gloss: "원하다", probability: 0.01)])   // 4위
+    let session = TranslationSession(classifier: clf, composer: try .bundled())
+    session.allowedWords = ["감기", "진단서", "원하다"]
+    session.allowedWordsTopK = 3
+    var accepted = 0
+    for f in fx.frames {
+        for e in session.process(Fixtures.frame(f), dt: fx.dt).events {
+            if case .wordAccepted = e { accepted += 1 }
+        }
+    }
+    #expect(clf.calls > 0 && accepted == 0)
+}
+
+/// 같은 단어가 연달아 확정되면 문장에는 한 번만 넣는다 (앱 설정).
+@Test func consecutiveDuplicateWordsCollapse() throws {
+    let b = SentenceBuilder(composer: try SentenceComposer.bundled(), sentenceEndHold: 3)
+    b.collapseRepeats = true
+    b.onWord("원하다"); b.onWord("원하다")
+    #expect(b.words == ["원하다"])
+    b.onWord("진단서"); b.onWord("원하다")
+    #expect(b.words == ["원하다", "진단서", "원하다"])     // 연달아가 아니면 그대로
+    let plain = SentenceBuilder(composer: try SentenceComposer.bundled())
+    plain.onWord("원하다"); plain.onWord("원하다")
+    #expect(plain.words == ["원하다", "원하다"])          // 기본값은 Python 과 같은 동작
+}
