@@ -82,3 +82,20 @@ struct SentenceTimingFixture: Decodable {
     #expect(try JSONDecoder().decode(PeerIntro.self, from: JSONEncoder().encode(intro)) == intro)
     #expect(UserRole.hearing.label == "청인" && UserRole.deaf.opposite == .hearing)
 }
+
+@Test func shortSegmentsAreNotClassified() throws {
+    let fx = try Fixtures.load("stream.json", as: StreamFixture.self)
+    let minFrames = 30
+    let expected = fx.segments.filter { $0.length >= minFrames }.count
+    #expect(expected > 0 && expected < fx.segments.count)          // 기준 데이터에 짧은 구간과 긴 구간이 둘 다 있음
+    let clf = FixedClassifier([GlossScore(gloss: "사과", probability: 0.9)])
+    let session = TranslationSession(classifier: clf, composer: try .bundled())
+    session.minClassifyFrames = minFrames
+    var accepted = 0
+    for f in fx.frames {
+        for e in session.process(Fixtures.frame(f), dt: fx.dt).events {
+            if case .wordAccepted = e { accepted += 1 }
+        }
+    }
+    #expect(clf.calls == expected && accepted == expected)
+}

@@ -48,7 +48,9 @@ final class HearingPipeline {
                 do {
                     if tracker == nil { tracker = try HolisticTracker() }
                     if session == nil {
-                        session = TranslationSession(classifier: try SignClassifier.bundled(), composer: try .bundled())
+                        let s = TranslationSession(classifier: try SignClassifier.bundled(), composer: try .bundled())
+                        s.minClassifyFrames = RecognitionDefaults.minSignFrames
+                        session = s
                     }
                 } catch {
                     print("[pipeline] load error \(error)")

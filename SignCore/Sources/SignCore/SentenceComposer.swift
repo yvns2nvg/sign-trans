@@ -8,6 +8,9 @@ public enum SentenceStyle: String, Sendable {
 public enum RecognitionDefaults {
     /// 1순위 확률이 이보다 낮은 단어는 버린다 (PRD F4-3, Q9).
     public static let confidenceThreshold = 0.5
+    /// 이보다 짧은 구간(약 1초 미만)은 단어로 판정하지 않는다.
+    /// 실측(2026-11-01, iPhone 후면): 진짜 수어 41~45프레임, 잘못 확정된 구간 대부분 6~24프레임.
+    public static let minSignFrames = 30
 }
 
 /// kslx/sentence.py compose_sentence 이식. kiwi 대신 미리 계산한 표를 쓴다.

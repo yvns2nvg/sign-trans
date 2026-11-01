@@ -24,6 +24,9 @@ public final class TranslationSession {
     public let builder: SentenceBuilder
     public let classifier: SignClassifying
     public var threshold: Double
+    /// 이보다 짧은 구간은 분류하지 않는다(손 내리기·준비 동작 오인식 방지). 기본값은 Python 과 같은 동작.
+    /// 앱은 RecognitionDefaults.minSignFrames 를 쓴다.
+    public var minClassifyFrames = SignStream.minSegmentFrames
     public private(set) var lastTopK: [GlossScore] = []
 
     public var pendingWords: [String] { builder.words }
@@ -42,7 +45,7 @@ public final class TranslationSession {
         let step = stream.push(frame, dt: dt)
         var events: [TranslationEvent] = []
         if step.label == .started { events.append(.wordStarted) }
-        if let seg = step.segment {
+        if let seg = step.segment, seg.count >= minClassifyFrames {
             do {
                 let top = try classifier.classify(Featurizer.featurize(seg))
                 lastTopK = top
