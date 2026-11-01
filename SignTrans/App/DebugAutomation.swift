@@ -38,6 +38,21 @@ import SignInference
                 print("[auto] 상황 어휘 모드 켬: \(words)")
             }
         }
+        // -demoAlias "최소=원하다" 로 상황 어휘 모드의 대체 단어를 정하고(유지됨), -demoAlias off 로 끈다.
+        if let v = value("-demoAlias") {
+            if v == "off" {
+                UserDefaults.standard.removeObject(forKey: "demoAliases")
+                print("[auto] 대체 단어 끔")
+            } else {
+                var map: [String: String] = [:]
+                for pair in v.split(separator: ",") {
+                    let kv = pair.split(separator: "=").map { $0.trimmingCharacters(in: .whitespaces) }
+                    if kv.count == 2, !kv[0].isEmpty, !kv[1].isEmpty { map[kv[0]] = kv[1] }
+                }
+                UserDefaults.standard.set(map, forKey: "demoAliases")
+                print("[auto] 대체 단어: \(map)")
+            }
+        }
         if args.contains("-soloHearing") {   // 상대 없이 청인 화면 + 카메라 파이프라인
             if args.contains("-front") { (m.hearing as? HearingController)?.pipeline.position = .front }
             if args.contains("-noFace") { (m.hearing as? HearingController)?.pipeline.useFace = false }

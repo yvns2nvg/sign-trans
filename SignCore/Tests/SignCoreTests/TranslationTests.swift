@@ -163,3 +163,23 @@ struct SentenceTimingFixture: Decodable {
     plain.onWord("원하다"); plain.onWord("원하다")
     #expect(plain.words == ["원하다", "원하다"])          // 기본값은 Python 과 같은 동작
 }
+
+/// 시연용 대체 단어: 상황 어휘 모드에서 '최소'가 상위 후보에 있으면 '원하다'로 확정한다.
+@Test func wordAliasesMapToAllowedWord() throws {
+    let fx = try Fixtures.load("stream.json", as: StreamFixture.self)
+    let clf = FixedClassifier([GlossScore(gloss: "최소", probability: 0.46),
+                               GlossScore(gloss: "최대", probability: 0.11),
+                               GlossScore(gloss: "진단서", probability: 0.04)])
+    let session = TranslationSession(classifier: clf, composer: try .bundled())
+    session.allowedWords = ["감기", "진단서", "원하다"]
+    session.allowedWordsTopK = 3
+    session.wordAliases = ["최소": "원하다"]
+    var accepted: [GlossScore] = []
+    for f in fx.frames {
+        for e in session.process(Fixtures.frame(f), dt: fx.dt).events {
+            if case .wordAccepted(let g) = e { accepted.append(g) }
+        }
+    }
+    #expect(clf.calls > 0 && accepted.count == clf.calls)
+    #expect(accepted.allSatisfy { $0.gloss == "원하다" && $0.probability == 0.46 })   // 순위가 더 높은 대체 단어가 먼저
+}

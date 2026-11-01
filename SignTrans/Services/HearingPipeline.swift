@@ -57,6 +57,10 @@ final class HearingPipeline {
                             s.allowedWords = Set(words)
                             print("[pipeline] 상황 어휘 모드: \(words)")
                         }
+                        if let aliases = UserDefaults.standard.dictionary(forKey: "demoAliases") as? [String: String] {
+                            s.wordAliases = aliases
+                            print("[pipeline] 대체 단어: \(aliases)")
+                        }
                         session = s
                     }
                 } catch {
@@ -103,7 +107,7 @@ final class HearingPipeline {
         let words = session.pendingWords
         let top = session.lastTopK.prefix(3).map { "\($0.gloss) \(Int($0.probability * 100))%" }.joined(separator: ", ")
         let dev = String(format: "fps %.1f  e %.3f  %@%@\n추론(구간포함) %.1fms\n%@", fps, step.energy,
-                         step.isIdle ? "대기" : "녹화중", session.allowedWords == nil ? "" : "  [어휘제한]",
+                         step.isIdle ? "대기" : "녹화중", session.allowedWords == nil ? "" : "  v2",
                          lastInferMs, top)
         #if DEBUG
         func has(_ r: Range<Int>, _ f: Frame) -> Bool { r.contains { f[$0] != .zero } }
