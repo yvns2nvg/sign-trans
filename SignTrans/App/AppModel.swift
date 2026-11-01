@@ -38,8 +38,9 @@ protocol HearingControlling: AnyObject {
     @Published var hint: String?
     @Published var toast: String?
     @Published var peerStatus: PeerStatus?
-    @Published var devInfo = ""
-    @Published var showDevInfo = false
+    /// 청인 화면: 지금 수어 구간을 녹화 중인지, 마지막 구간의 상위 후보(최대 3개).
+    @Published var signRecording = false
+    @Published var candidates: [GlossScore] = []
 
     var transport: PeerTransport?
     var hearing: HearingControlling?

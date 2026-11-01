@@ -105,6 +105,14 @@ final class HearingPipeline {
         case .ok: t0 < rejectHintUntil ? "다시 해 주세요" : nil
         }
         let words = session.pendingWords
+        let recording = !step.isIdle
+        // 화면에 보일 상위 후보: 대체 단어를 적용하고 같은 단어는 한 번만
+        var shown: [GlossScore] = []
+        for g in session.lastTopK {
+            let w = session.allowedWords == nil ? g.gloss : (session.wordAliases[g.gloss] ?? g.gloss)
+            if !shown.contains(where: { $0.gloss == w }) { shown.append(GlossScore(gloss: w, probability: g.probability)) }
+            if shown.count == 3 { break }
+        }
         let top = session.lastTopK.prefix(3).map { "\($0.gloss) \(Int($0.probability * 100))%" }.joined(separator: ", ")
         let dev = String(format: "fps %.1f  e %.3f  %@%@\n추론(구간포함) %.1fms\n%@", fps, step.energy,
                          step.isIdle ? "대기" : "녹화중", session.allowedWords == nil ? "" : "  v2",
@@ -140,7 +148,8 @@ final class HearingPipeline {
         #endif
         DispatchQueue.main.async { [weak self] in
             guard let m = self?.model else { return }
-            m.devInfo = dev
+            m.signRecording = recording
+            m.candidates = shown
             m.translationWords = words
             m.hint = hint
             if let sentence {

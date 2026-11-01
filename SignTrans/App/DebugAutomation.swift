@@ -59,7 +59,6 @@ import SignInference
             if args.contains("-mirror") { (m.hearing as? HearingController)?.pipeline.camera.mirrorFrames = true }
             print("[auto] solo hearing front=\(args.contains("-front")) face=\(!args.contains("-noFace")) mirror=\(args.contains("-mirror"))")
             m.role = .hearing
-            m.showDevInfo = true
             m.connected(to: NearbyPeer(id: "solo", name: "테스트", role: .deaf))
             return
         }

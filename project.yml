@@ -1,12 +1,12 @@
 name: SignTrans
 options:
   bundleIdPrefix: com.iyunseung
+  deploymentTarget:
+    iOS: "26.0"
 settings:
   base:
     DEVELOPMENT_TEAM: SXH3TB2MUZ   # 개인(무료) 팀, 자동 서명
     CODE_SIGN_STYLE: Automatic
-  deploymentTarget:
-    iOS: "26.0"
 packages:
   SignCore:
     path: SignCore
