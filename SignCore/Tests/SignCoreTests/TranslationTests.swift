@@ -99,3 +99,35 @@ struct SentenceTimingFixture: Decodable {
     }
     #expect(clf.calls == expected && accepted == expected)
 }
+
+/// 상황 어휘 모드: 상위 후보 안에 허용 단어가 있으면 확률과 무관하게 그 단어로 확정한다.
+@Test func allowedWordsPickFromTopCandidates() throws {
+    let fx = try Fixtures.load("stream.json", as: StreamFixture.self)
+    let clf = FixedClassifier([GlossScore(gloss: "단명", probability: 0.69),
+                               GlossScore(gloss: "감기", probability: 0.04),
+                               GlossScore(gloss: "경북", probability: 0.02)])
+    let session = TranslationSession(classifier: clf, composer: try .bundled())
+    session.allowedWords = ["감기", "진단서", "급하다"]
+    var accepted: [String] = []
+    for f in fx.frames {
+        for e in session.process(Fixtures.frame(f), dt: fx.dt).events {
+            if case .wordAccepted(let g) = e { accepted.append(g.gloss) }
+        }
+    }
+    #expect(clf.calls > 0 && accepted == Array(repeating: "감기", count: clf.calls))
+}
+
+@Test func allowedWordsRejectWhenNoneInTopCandidates() throws {
+    let fx = try Fixtures.load("stream.json", as: StreamFixture.self)
+    let clf = FixedClassifier([GlossScore(gloss: "단명", probability: 0.95)])
+    let session = TranslationSession(classifier: clf, composer: try .bundled())
+    session.allowedWords = ["감기", "진단서", "급하다"]
+    var accepted = 0, rejected = 0
+    for f in fx.frames {
+        for e in session.process(Fixtures.frame(f), dt: fx.dt).events {
+            if case .wordAccepted = e { accepted += 1 }
+            if case .wordRejected = e { rejected += 1 }
+        }
+    }
+    #expect(accepted == 0 && rejected == clf.calls)   // 확률 95%여도 허용 단어가 아니면 버림
+}

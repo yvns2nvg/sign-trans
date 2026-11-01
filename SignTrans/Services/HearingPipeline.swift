@@ -50,6 +50,11 @@ final class HearingPipeline {
                     if session == nil {
                         let s = TranslationSession(classifier: try SignClassifier.bundled(), composer: try .bundled())
                         s.minClassifyFrames = RecognitionDefaults.minSignFrames
+                        // 시연용 상황 어휘 모드 (Mac 에서 -demoVocab 으로 한 번 설정하면 유지됨)
+                        if let words = UserDefaults.standard.stringArray(forKey: "demoVocabulary"), !words.isEmpty {
+                            s.allowedWords = Set(words)
+                            print("[pipeline] 상황 어휘 모드: \(words)")
+                        }
                         session = s
                     }
                 } catch {
@@ -95,8 +100,9 @@ final class HearingPipeline {
         }
         let words = session.pendingWords
         let top = session.lastTopK.prefix(3).map { "\($0.gloss) \(Int($0.probability * 100))%" }.joined(separator: ", ")
-        let dev = String(format: "fps %.1f  e %.3f  %@\n추론(구간포함) %.1fms\n%@", fps, step.energy,
-                         step.isIdle ? "대기" : "녹화중", lastInferMs, top)
+        let dev = String(format: "fps %.1f  e %.3f  %@%@\n추론(구간포함) %.1fms\n%@", fps, step.energy,
+                         step.isIdle ? "대기" : "녹화중", session.allowedWords == nil ? "" : "  [어휘제한]",
+                         lastInferMs, top)
         #if DEBUG
         func has(_ r: Range<Int>, _ f: Frame) -> Bool { r.contains { f[$0] != .zero } }
         seen.frames += 1

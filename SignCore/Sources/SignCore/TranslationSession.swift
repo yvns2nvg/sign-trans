@@ -27,6 +27,9 @@ public final class TranslationSession {
     /// 이보다 짧은 구간은 분류하지 않는다(손 내리기·준비 동작 오인식 방지). 기본값은 Python 과 같은 동작.
     /// 앱은 RecognitionDefaults.minSignFrames 를 쓴다.
     public var minClassifyFrames = SignStream.minSegmentFrames
+    /// 상황 어휘 모드(시연용). 설정하면 분류 상위 후보(최대 5개) 중 이 단어들만 본다:
+    /// 가장 순위가 높은 허용 단어를 확률 기준 없이 확정하고, 하나도 없으면 버린다. nil 이면 일반 모드.
+    public var allowedWords: Set<String>?
     public private(set) var lastTopK: [GlossScore] = []
 
     public var pendingWords: [String] { builder.words }
@@ -49,7 +52,14 @@ public final class TranslationSession {
             do {
                 let top = try classifier.classify(Featurizer.featurize(seg))
                 lastTopK = top
-                if let best = top.first {
+                if let allowed = allowedWords {
+                    if let hit = top.first(where: { allowed.contains($0.gloss) }) {
+                        builder.onWord(hit.gloss)
+                        events.append(.wordAccepted(hit))
+                    } else if let best = top.first {
+                        events.append(.wordRejected(best))
+                    }
+                } else if let best = top.first {
                     if best.probability >= threshold {
                         builder.onWord(best.gloss)
                         events.append(.wordAccepted(best))

@@ -27,6 +27,17 @@ import SignInference
     static func run(_ m: AppModel) {
         let args = ProcessInfo.processInfo.arguments
         if args.contains("-selfTest") { selfTest() }
+        // -demoVocab "감기,진단서,급하다" 로 상황 어휘 모드를 켜고(앱을 다시 열어도 유지), -demoVocab off 로 끈다.
+        if let v = value("-demoVocab") {
+            if v == "off" {
+                UserDefaults.standard.removeObject(forKey: "demoVocabulary")
+                print("[auto] 상황 어휘 모드 끔")
+            } else {
+                let words = v.split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces) }.filter { !$0.isEmpty }
+                UserDefaults.standard.set(words, forKey: "demoVocabulary")
+                print("[auto] 상황 어휘 모드 켬: \(words)")
+            }
+        }
         if args.contains("-soloHearing") {   // 상대 없이 청인 화면 + 카메라 파이프라인
             if args.contains("-front") { (m.hearing as? HearingController)?.pipeline.position = .front }
             if args.contains("-noFace") { (m.hearing as? HearingController)?.pipeline.useFace = false }
