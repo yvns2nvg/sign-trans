@@ -5,7 +5,7 @@ public enum Featurizer {
     public static let clipLimit = 20.0
     public static let featureDim = Layout.nTotal * 2 * 2   // 356
 
-    static func shoulderScale(_ f: Frame) -> Double {
+    public static func shoulderScale(_ f: Frame) -> Double {
         let v = f[Layout.rShoulder] - f[Layout.lShoulder]
         return (v.x * v.x + v.y * v.y).squareRoot()
     }

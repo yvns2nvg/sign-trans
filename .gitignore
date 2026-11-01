@@ -8,3 +8,4 @@ DerivedData/
 .superpowers/
 build/
 SignTrans.xcodeproj/
+reference/

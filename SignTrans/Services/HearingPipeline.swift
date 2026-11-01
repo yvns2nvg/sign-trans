@@ -17,12 +17,17 @@ final class HearingPipeline {
     private var lastInferMs = 0.0
     private var rejectHintUntil = 0.0
     var useFace = true
+    var position: AVCaptureDevice.Position = .back
+    private var lastLog = 0.0
+    #if DEBUG
+    private var seen = (frames: 0, body: 0, left: 0, right: 0)   // 1초 단위 검출 카운트
+    #endif
 
     init(model: AppModel) { self.model = model }
 
     func start() {
         Task {
-            let result = await camera.start(position: .back, wantFrames: true)
+            let result = await camera.start(position: position, wantFrames: true)
             guard result == .running else {
                 #if DEBUG
                 camera.queue.async { [self] in   // 카메라가 없어도 모델이 앱 번들에서 불러와지는지 확인
@@ -90,6 +95,35 @@ final class HearingPipeline {
         let top = session.lastTopK.prefix(3).map { "\($0.gloss) \(Int($0.probability * 100))%" }.joined(separator: ", ")
         let dev = String(format: "fps %.1f  e %.3f  %@\n추론(구간포함) %.1fms\n%@", fps, step.energy,
                          step.isIdle ? "대기" : "녹화중", lastInferMs, top)
+        #if DEBUG
+        func has(_ r: Range<Int>, _ f: Frame) -> Bool { r.contains { f[$0] != .zero } }
+        seen.frames += 1
+        if Featurizer.shoulderScale(frame) >= Featurizer.degenerateScalePx { seen.body += 1 }
+        if has(Layout.leftHand, frame) { seen.left += 1 }
+        if has(Layout.rightHand, frame) { seen.right += 1 }
+        if let seg = step.segment {
+            let withHand = seg.filter { has(Layout.leftHand, $0) || has(Layout.rightHand, $0) }.count
+            print("[pipeline] 구간 \(seg.count)프레임, 손 검출 \(withHand * 100 / seg.count)%")
+        }
+        for e in events {
+            switch e {
+            case .wordAccepted(let g): print("[pipeline] 단어 \(g.gloss) \(Int(g.probability * 100))%  top: \(top)")
+            case .wordRejected(let g): print("[pipeline] 버림 \(g.gloss) \(Int(g.probability * 100))%  top: \(top)")
+            case .sentence(let w, let text): print("[pipeline] 문장 \(w) → \(text)")
+            case .classificationFailed(let err): print("[pipeline] 분류 실패 \(err)")
+            case .wordStarted: break
+            }
+        }
+        if t0 - lastLog >= 1 {
+            lastLog = t0
+            let n = max(seen.frames, 1)
+            print("[pipeline] " + dev.replacingOccurrences(of: "\n", with: " | ")
+                  + " | 검출 몸\(seen.body * 100 / n)% 왼손\(seen.left * 100 / n)% 오른손\(seen.right * 100 / n)%"
+                  + String(format: " | 어깨x 오른%.0f 왼%.0f", frame[Layout.rShoulder].x, frame[Layout.lShoulder].x)
+                  + " | 안내 \(hint ?? "-") | 단어 \(words)")
+            seen = (0, 0, 0, 0)
+        }
+        #endif
         DispatchQueue.main.async { [weak self] in
             guard let m = self?.model else { return }
             m.devInfo = dev

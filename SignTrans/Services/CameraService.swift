@@ -7,6 +7,8 @@ final class CameraService: NSObject, AVCaptureVideoDataOutputSampleBufferDelegat
     let session = AVCaptureSession()
     let queue = DispatchQueue(label: "camera.frames")
     var onFrame: (CMSampleBuffer) -> Void = { _ in }
+    /// 모델에 들어가는 영상의 좌우 반전 (전면 카메라 실측 보정용)
+    var mirrorFrames = false
     private var configured = false
 
     func start(position: AVCaptureDevice.Position, wantFrames: Bool) async -> CameraStartResult {
@@ -24,7 +26,11 @@ final class CameraService: NSObject, AVCaptureVideoDataOutputSampleBufferDelegat
                 out.setSampleBufferDelegate(self, queue: queue)
                 if session.canAddOutput(out) { session.addOutput(out) }
                 // 세로 화면 그대로의 버퍼를 받는다 (MediaPipe 에 orientation .up 으로 넘김)
-                if let c = out.connection(with: .video), c.isVideoRotationAngleSupported(90) { c.videoRotationAngle = 90 }
+                if let c = out.connection(with: .video) {
+                    if c.isVideoRotationAngleSupported(90) { c.videoRotationAngle = 90 }
+                    // 모델에는 좌우 반전 없는 영상을 넣는다 (Python 웹캠 데모와 같은 조건)
+                    if c.isVideoMirroringSupported { c.automaticallyAdjustsVideoMirroring = false; c.isVideoMirrored = mirrorFrames }
+                }
             }
             session.commitConfiguration()
             configured = true

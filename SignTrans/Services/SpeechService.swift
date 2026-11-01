@@ -49,7 +49,7 @@ final class SpeechService {
             resultsTask = Task { [weak self] in
                 do {
                     for try await r in transcriber.results {
-                        let text = String(r.text.characters)
+                        let text = String(r.text.characters).trimmingCharacters(in: .whitespacesAndNewlines)
                         if r.isFinal { self?.onFinal(text) } else { self?.onPartial(text) }
                     }
                 } catch {
