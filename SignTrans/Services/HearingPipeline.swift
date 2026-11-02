@@ -52,6 +52,7 @@ final class HearingPipeline {
                         s.minClassifyFrames = RecognitionDefaults.minSignFrames
                         s.allowedWordsTopK = RecognitionDefaults.allowedWordsTopK
                         s.builder.collapseRepeats = true
+                        s.builder.sentenceEndHold = RecognitionDefaults.sentenceEndHoldFrames
                         // 시연용 상황 어휘 모드 (Mac 에서 -demoVocab 으로 한 번 설정하면 유지됨)
                         if let words = UserDefaults.standard.stringArray(forKey: "demoVocabulary"), !words.isEmpty {
                             s.allowedWords = Set(words)

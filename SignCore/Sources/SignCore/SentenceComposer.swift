@@ -14,6 +14,9 @@ public enum RecognitionDefaults {
     public static let minSignFrames = 20
     /// 상황 어휘 모드에서 볼 상위 후보 수 (실측: 5위까지 보면 1% 후보가 확정되는 경우가 있었음).
     public static let allowedWordsTopK = 3
+    /// 앱의 문장 끝 대기 프레임(30fps 기준 3초). 실측: 1.5초(Python 기본 45)면 두 단어 문장의
+    /// 첫 단어 뒤 다음 수어를 준비하는 사이에 문장이 먼저 끝남.
+    public static let sentenceEndHoldFrames = 90
 }
 
 /// kslx/sentence.py compose_sentence 이식. kiwi 대신 미리 계산한 표를 쓴다.
@@ -105,7 +108,7 @@ public struct SentenceComposer: Sendable {
 /// 단어가 하나씩 들어오다가 sentenceEndHold 프레임 동안 쉬면 문장을 완성한다.
 public final class SentenceBuilder {
     public let composer: SentenceComposer
-    public let sentenceEndHold: Int
+    public var sentenceEndHold: Int
     public var style: SentenceStyle
     /// true 면 바로 앞과 같은 단어는 문장에 다시 넣지 않는다(같은 수어 반복 확정 방지). 기본값은 Python 과 같음.
     public var collapseRepeats = false

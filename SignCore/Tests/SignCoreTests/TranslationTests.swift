@@ -183,3 +183,14 @@ struct SentenceTimingFixture: Decodable {
     #expect(clf.calls > 0 && accepted.count == clf.calls)
     #expect(accepted.allSatisfy { $0.gloss == "원하다" && $0.probability == 0.46 })   // 순위가 더 높은 대체 단어가 먼저
 }
+
+/// 앱은 단어 사이 여유를 더 주려고 문장 끝 대기 프레임을 늘린다.
+@Test func sentenceEndHoldCanBeLengthened() throws {
+    let b = SentenceBuilder(composer: try SentenceComposer.bundled())
+    b.sentenceEndHold = RecognitionDefaults.sentenceEndHoldFrames
+    b.onWord("진단서")
+    for _ in 0..<45 { #expect(!b.tickIdle()) }          // Python 기본(45)에서는 여기서 끝났을 것
+    var ended = false
+    for _ in 45..<RecognitionDefaults.sentenceEndHoldFrames { ended = b.tickIdle() }
+    #expect(ended)
+}
