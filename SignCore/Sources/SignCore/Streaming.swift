@@ -63,9 +63,10 @@ public final class LiveNormalizer {
 }
 
 /// 두 정규화 프레임 사이 양손 42점 평균 이동량(어깨너비 단위).
-public func handEnergy(prev: Frame, curr: Frame) -> Double {
+/// left/right 가 false 인 손은 이동량 0 으로 본다(나누는 수는 그대로 42).
+public func handEnergy(prev: Frame, curr: Frame, left: Bool = true, right: Bool = true) -> Double {
     var sum = 0.0
-    for i in Array(Layout.leftHand) + Array(Layout.rightHand) {
+    for i in (left ? Array(Layout.leftHand) : []) + (right ? Array(Layout.rightHand) : []) {
         let d = curr[i] - prev[i]
         sum += (d.x * d.x + d.y * d.y).squareRoot()
     }

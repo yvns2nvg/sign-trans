@@ -18,6 +18,11 @@ public final class SignStream {
     public let normalizer = LiveNormalizer()
     public let gate: SegmentGate
     private var prevNorm: Frame?
+    /// true 면 손 인식이 끊겼다 돌아온 직후(연속 handStableFrames 미만)의 손은 이동량에서 뺀다.
+    /// 끊긴 프레임은 손 좌표가 0 이라 손이 순간이동한 것처럼 계산된다. 기본값은 Python 과 같은 동작.
+    public var ignoreHandDropouts = false
+    public static let handStableFrames = 3
+    private var handRun = (left: 0, right: 0)
 
     public init(smoothing: Bool = true, gate: SegmentGate = SegmentGate()) {
         self.smoother = smoothing ? OneEuroFilter() : nil
@@ -28,7 +33,15 @@ public final class SignStream {
         let sm = smoother.map { $0(frame, dt: dt) } ?? frame
         let n = normalizer.normalize(sm)
         var energy = 0.0
-        if let p = prevNorm, let n { energy = handEnergy(prev: p, curr: n) }
+        let seen = (left: Layout.leftHand.contains { frame[$0] != .zero },
+                    right: Layout.rightHand.contains { frame[$0] != .zero })
+        handRun = (seen.left ? handRun.left + 1 : 0, seen.right ? handRun.right + 1 : 0)
+        if let p = prevNorm, let n {
+            energy = ignoreHandDropouts
+                ? handEnergy(prev: p, curr: n, left: handRun.left >= Self.handStableFrames,
+                             right: handRun.right >= Self.handStableFrames)
+                : handEnergy(prev: p, curr: n)
+        }
         if let n { prevNorm = n }
         let (label, buf) = gate.step(sm, energy: energy)
         let segment = (label == .finished && (buf?.count ?? 0) >= Self.minSegmentFrames) ? buf : nil
@@ -41,5 +54,6 @@ public final class SignStream {
         gate.reset()
         smoother?.reset()
         prevNorm = nil
+        handRun = (0, 0)
     }
 }
