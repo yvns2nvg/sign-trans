@@ -20,6 +20,8 @@ protocol PeerTransport: AnyObject {
 protocol HearingControlling: AnyObject {
     func start()
     func stop()
+    /// 누르고 말하기: true 인 동안만 마이크 소리를 음성 인식에 보낸다.
+    func setMic(_ on: Bool)
 }
 
 /// 화면 흐름과 대화 상태. 서비스는 이벤트 메서드로만 상태를 바꾼다.
@@ -41,6 +43,8 @@ protocol HearingControlling: AnyObject {
     /// 청인 화면: 지금 수어 구간을 녹화 중인지, 마지막 구간의 상위 후보(최대 3개).
     @Published var signRecording = false
     @Published var candidates: [GlossScore] = []
+    /// 청인 화면: 마이크 버튼을 누르고 있는 중인지.
+    @Published private(set) var micOn = false
 
     var transport: PeerTransport?
     var hearing: HearingControlling?
@@ -87,7 +91,14 @@ protocol HearingControlling: AnyObject {
         transport?.start(name: myName, role: role)
     }
 
+    func setMic(_ on: Bool) {
+        guard on != micOn else { return }
+        micOn = on
+        hearing?.setMic(on)
+    }
+
     func endConversation() {
+        setMic(false)
         send(.bye)
         hearing?.stop()
         transport?.disconnect()
@@ -178,6 +189,7 @@ protocol HearingControlling: AnyObject {
     }
 
     private func resetConversation() {
+        setMic(false)
         partner = nil
         pendingRequest = nil
         captions = []

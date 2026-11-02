@@ -96,6 +96,8 @@ struct RootView: View {
         await speech.start()
     } }
 
+    nonisolated func setMic(_ on: Bool) { speech.micOpen = on }
+
     nonisolated func stop() { Task { @MainActor in
         camera?.1()
         await speech.stop()

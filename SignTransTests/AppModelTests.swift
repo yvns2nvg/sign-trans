@@ -15,6 +15,13 @@ final class FakeTransport: PeerTransport {
     func disconnect() { log.append("disconnect") }
 }
 
+final class FakeHearing: HearingControlling {
+    var log: [String] = []
+    func start() { log.append("start") }
+    func stop() { log.append("stop") }
+    func setMic(_ on: Bool) { log.append("mic \(on)") }
+}
+
 @MainActor struct AppModelTests {
     let jimin = NearbyPeer(id: "p1", name: "지민", role: .deaf)
 
@@ -97,5 +104,36 @@ final class FakeTransport: PeerTransport {
         m.connected(to: jimin)
         m.received(PeerMessage(kind: .bye, seq: 9))
         #expect(m.screen == .discovery && m.toast == "지민님이 대화를 끝냈어요")
+    }
+
+    /// 청인은 마이크 버튼을 누르고 있는 동안에만 말이 자막으로 간다.
+    @Test func micIsOnOnlyWhileHeld() {
+        let (m, _) = model(.hearing)
+        let h = FakeHearing()
+        m.hearing = h
+        m.connected(to: jimin)
+        #expect(m.micOn == false)
+        m.setMic(true)
+        #expect(m.micOn == true)
+        m.setMic(false)
+        #expect(m.micOn == false)
+        m.setMic(true)
+        m.endConversation()
+        #expect(m.micOn == false)
+        #expect(h.log.filter { $0.hasPrefix("mic") } == ["mic true", "mic false", "mic true", "mic false"])
+    }
+
+    /// 시연 모드 표시: 확정 단어가 맨 앞, 20% 미만이면 20~25%, 다른 후보는 그보다 낮게.
+    @Test func demoDisplayLiftsLowAcceptedWord() {
+        let shown = HearingPipeline.demoDisplay(
+            accepted: GlossScore(gloss: "진단서", probability: 0.08),
+            candidates: [GlossScore(gloss: "이력서", probability: 0.08), GlossScore(gloss: "진단서", probability: 0.08),
+                         GlossScore(gloss: "경고", probability: 0.04)])
+        #expect(shown.map(\.gloss) == ["진단서", "이력서", "경고"])
+        #expect((0.20...0.25).contains(shown[0].probability))
+        #expect(shown[1].probability < shown[0].probability && shown[2].probability < shown[0].probability)
+        let high = HearingPipeline.demoDisplay(accepted: GlossScore(gloss: "원하다", probability: 0.46),
+                                               candidates: [GlossScore(gloss: "원하다", probability: 0.46)])
+        #expect(high == [GlossScore(gloss: "원하다", probability: 0.46)])   // 20% 이상이면 그대로
     }
 }

@@ -1,5 +1,6 @@
 import AVFoundation
 import Foundation
+import os
 import Speech
 import SignCore
 
@@ -11,6 +12,24 @@ final class SpeechService {
     var onLog: (String) -> Void = { _ in }
 
     private let engine = AVAudioEngine()
+    private let micGate = OSAllocatedUnfairLock(initialState: false)
+    /// 누르고 말하기. false 인 동안은 마이크 소리 대신 무음을 보낸다
+    /// (엔진은 계속 돌고, 손을 떼면 무음 구간에서 말이 자연스럽게 확정된다).
+    var micOpen: Bool {
+        get { micGate.withLock { $0 } }
+        set { micGate.withLock { $0 = newValue } }
+    }
+
+    /// 버튼을 누르지 않은 동안 들어온 소리를 무음으로 바꾼다 (오디오 스레드).
+    private func gate(_ buffer: AVAudioPCMBuffer) {
+        guard !micOpen else { return }
+        let n = Int(buffer.frameLength)
+        for ch in 0..<Int(buffer.format.channelCount) {
+            if let f = buffer.floatChannelData { f[ch].update(repeating: 0, count: n) }
+            else if let i = buffer.int16ChannelData { i[ch].update(repeating: 0, count: n) }
+            else if let i = buffer.int32ChannelData { i[ch].update(repeating: 0, count: n) }
+        }
+    }
     private var analyzer: SpeechAnalyzer?
     private var input: AsyncStream<AnalyzerInput>.Continuation?
     private var resultsTask: Task<Void, Never>?
@@ -91,6 +110,7 @@ final class SpeechService {
         newLegacyRequest()
         let node = engine.inputNode
         node.installTap(onBus: 0, bufferSize: 4096, format: node.outputFormat(forBus: 0)) { [weak self] buf, _ in
+            self?.gate(buf)
             self?.legacyRequest?.append(buf)
         }
         engine.prepare()
@@ -150,7 +170,8 @@ final class SpeechService {
         let node = engine.inputNode
         let inFormat = node.outputFormat(forBus: 0)
         guard let converter = AVAudioConverter(from: inFormat, to: format) else { throw CocoaError(.featureUnsupported) }
-        node.installTap(onBus: 0, bufferSize: 4096, format: inFormat) { buffer, _ in
+        node.installTap(onBus: 0, bufferSize: 4096, format: inFormat) { [weak self] buffer, _ in
+            self?.gate(buffer)
             let ratio = format.sampleRate / inFormat.sampleRate
             let cap = AVAudioFrameCount(Double(buffer.frameLength) * ratio + 1024)
             guard let out = AVAudioPCMBuffer(pcmFormat: format, frameCapacity: cap) else { return }

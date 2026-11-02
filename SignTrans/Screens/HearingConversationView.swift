@@ -24,9 +24,10 @@ struct HearingConversationView: View {
                     HStack {
                         Image(systemName: "camera.fill")
                         Spacer()
-                        Text("카메라 사용 중 · 마이크 사용 중").font(.footnote.weight(.semibold))
+                        Text(model.micOn ? "카메라 사용 중 · 마이크 사용 중" : "카메라 사용 중 · 마이크 꺼짐")
+                            .font(.footnote.weight(.semibold))
                         Spacer()
-                        Image(systemName: "mic.fill")
+                        Image(systemName: model.micOn ? "mic.fill" : "mic.slash.fill")
                     }
                     .foregroundStyle(.white).padding(.horizontal, 18).padding(.vertical, 12)
                     .background(Theme.cameraBar.opacity(0.9), in: RoundedRectangle(cornerRadius: 12))
@@ -55,10 +56,32 @@ struct HearingConversationView: View {
             if model.link == .lost {
                 PrimaryButton(title: "다시 찾기") { model.searchAgain() }.padding(.horizontal)
             }
+            HoldToTalkButton(on: model.micOn) { model.setMic($0) }.padding(.horizontal)
             EndConversationButton { model.endConversation() }.padding(.horizontal)
         }
         .background(Color.white.ignoresSafeArea())
         .navigationBarBackButtonHidden()
+    }
+}
+
+/// 누르고 있는 동안만 말이 상대 화면에 자막으로 간다.
+private struct HoldToTalkButton: View {
+    let on: Bool
+    let set: (Bool) -> Void
+    var body: some View {
+        Label(on ? "말하는 중… 손을 떼면 끝나요" : "누르고 말하기", systemImage: on ? "waveform" : "mic.fill")
+            .font(.headline).symbolEffect(.variableColor.iterative, isActive: on)
+            .frame(maxWidth: .infinity).padding(.vertical, 16)
+            .foregroundStyle(.white)
+            .background(on ? Theme.danger : Theme.primary, in: RoundedRectangle(cornerRadius: 14))
+            .scaleEffect(on ? 0.97 : 1)
+            .animation(.easeOut(duration: 0.12), value: on)
+            .contentShape(RoundedRectangle(cornerRadius: 14))
+            .gesture(DragGesture(minimumDistance: 0)
+                .onChanged { _ in if !on { set(true) } }
+                .onEnded { _ in set(false) })
+            .sensoryFeedback(.impact, trigger: on)
+            .accessibilityAddTraits(.isButton)
     }
 }
 

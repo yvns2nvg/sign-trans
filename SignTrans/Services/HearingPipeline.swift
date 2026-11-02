@@ -15,6 +15,8 @@ final class HearingPipeline {
     private var lastTs: Double?
     private var frames = 0, fpsWindowStart = CACurrentMediaTime(), fps = 0.0
     private var lastInferMs = 0.0
+    /// 시연 모드에서 마지막으로 확정된 단어 기준의 표시용 후보.
+    private var shownAccepted: [GlossScore]?
     private var rejectHintUntil = 0.0
     var useFace = true
     var position: AVCaptureDevice.Position = .back
@@ -75,7 +77,17 @@ final class HearingPipeline {
 
     func stop() {
         camera.stop()
-        camera.queue.async { [self] in session?.clearWords(); lastTs = nil }
+        camera.queue.async { [self] in session?.clearWords(); lastTs = nil; shownAccepted = nil }
+    }
+
+    /// 시연 모드 화면 표시: 확정된 단어를 맨 앞에 두고, 확률이 20% 미만이면 20~25%로 보이게 한다.
+    /// 나머지 후보는 그보다 낮게 보인다. 실제 값은 로그에 그대로 남는다.
+    static func demoDisplay(accepted: GlossScore, candidates: [GlossScore],
+                            floor: ClosedRange<Double> = 0.20...0.25) -> [GlossScore] {
+        let p = accepted.probability < floor.lowerBound ? Double.random(in: floor) : accepted.probability
+        let rest = candidates.filter { $0.gloss != accepted.gloss }.prefix(2)
+            .map { GlossScore(gloss: $0.gloss, probability: min($0.probability, max(p - 0.05, 0))) }
+        return [GlossScore(gloss: accepted.gloss, probability: p)] + rest
     }
 
     /// camera.queue 에서 호출된다.
@@ -112,8 +124,12 @@ final class HearingPipeline {
         for g in session.lastTopK {
             let w = session.allowedWords == nil ? g.gloss : (session.wordAliases[g.gloss] ?? g.gloss)
             if !shown.contains(where: { $0.gloss == w }) { shown.append(GlossScore(gloss: w, probability: g.probability)) }
-            if shown.count == 3 { break }
         }
+        if session.allowedWords != nil, let acc = events.lazy.compactMap({ e -> GlossScore? in
+            if case .wordAccepted(let g) = e { g } else { nil } }).last {
+            shownAccepted = Self.demoDisplay(accepted: acc, candidates: shown)   // 버려진 구간은 표시를 바꾸지 않음
+        }
+        shown = shownAccepted ?? Array(shown.prefix(3))
         let top = session.lastTopK.prefix(3).map { "\($0.gloss) \(Int($0.probability * 100))%" }.joined(separator: ", ")
         let dev = String(format: "fps %.1f  e %.3f  %@%@\n추론(구간포함) %.1fms\n%@", fps, step.energy,
                          step.isIdle ? "대기" : "녹화중", session.allowedWords == nil ? "" : "  v2",
